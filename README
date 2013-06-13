@@ -72,6 +72,7 @@ DEPENDENCIES
 Software versions used:
 Splitta 1.03
 Stanford CoreNLP 1.3.2
+HTML::Entities
 
 Requirements:
 jgrapht.jar
@@ -83,3 +84,35 @@ stanford-corenlp-2012-05-22-models.jar
 svm_light.6.02
 umd-parser.jar
 wsj-6.pml	# grammar file
+
+The scripts assumes these will by default be in ./lib.
+
+If you want to do true-casing, you need to start the recaser server. Default script
+is provided in scripts/start-recaser.sh
+
+BASH VARIABLES
+
+There are a number of variables that control the program. The most important 
+ones are
+
+* DIR_TO_SINGLE_FILE 
+  * script to convert a directory of files into one
+  * defaults to scripts/raw_text_to_agiga_input.pl
+  * not applicable if the input argument is a file
+* RECASER_SCRIPT
+  * script to handle true casing
+  * defaults to scripts/recase.sh
+
+When recasing, you may want to set the port (RECASER_PORT).
+
+All files are marked by a timestamp; the default is YYYYMMDD-HHMMSS (24hr clock)
+but you can control is with TIMESTAMP. This allows you to start/stop the pipeline 
+at various stages.
+
+The pipeline depends on a single initial file. If the input is a directory, 
+$DIR_TO_SINGLE_FILE applies. If not: if sym_link_okay=1, then we create a symlink 
+to the given file; otherwise, we copy it.
+
+Setting real_run=false will just provide a dry-run.
+
+There are a number of others, which will be documented with time.
