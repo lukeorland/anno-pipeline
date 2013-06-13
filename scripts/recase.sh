@@ -1,13 +1,11 @@
 #!/bin/bash
 
-set -o nounset
-
 : ${RECASER_PORT=9001}
 : ${RECASER_HOST=$(hostname)}
 
 IN_FILE=$(readlink -f "$1")
 
-if [[ ! -e $IN_FILE ]]; then
+if [[ ! -e "$IN_FILE" ]]; then
     echo "input file \"$1\" doesn't exist"
     exit 1
 fi
