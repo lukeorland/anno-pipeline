@@ -83,6 +83,10 @@ RUN_DIR=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)/
 : ${TIMESTAMP=$(date +%Y%m%d-%H%M%S)}
 : ${sym_link_okay=1}
 : ${DIR_TO_SINGLE_FILE="perl ${RUN_DIR}/scripts/raw_text_to_agiga_input.pl"}
+: ${RECASER_SCRIPT="${RUN_DIR}/scripts/recase.sh"}
+RECASER_SCRIPT="$(readlink -f $RECASER_SCRIPT)"
+
+
 : ${MAIL_OPTIONS=""}
 : ${Q_SHELL="-S /bin/bash "}
 
@@ -283,6 +287,12 @@ if ! $doc ; then
 fi
 
 check_recase_status
+if [[ ! -e "${RECASER_SCRIPT}" ]] && ${FLAGS["recase"]} ; then
+    echo "We want to true case the text, but can't find the script!"
+    echo "We're looking here:"
+    echo "$RECASER_SCRIPT"
+    exit 1
+fi
 
 if [ ! -d "$wrkdir" ]; then
     mkdir "$wrkdir"
@@ -374,7 +384,7 @@ CMDS["sgml"]="cat $wrkdir/$f.tok | python ${RUN_DIR}/scripts/separate_lines.py \
 CMDS["nbsp"]="perl -p -ibak -e 's/\x{c2}\x{a0}/ /g;' $wrkdir/$f.markup"
 # 3b. Recase
 ARGS["recase"]="RECASER_HOST=${RECASER_HOST} RECASER_PORT=${RECASER_PORT}"
-CMDS["recase"]="${RUN_DIR}/scripts/recase.sh $wrkdir/$f.to_parse > $wrkdir/$f.recased"
+CMDS["recase"]="${RECASER_SCRIPT} $wrkdir/$f.to_parse > $wrkdir/$f.recased"
 # 4. Parse
 CMDS["parse"]="java -Xmx${PARSE_HEAP} -ss${PARSE_SS} -cp ${RUN_DIR}/lib/umd-parser.jar \
 	edu.purdue.ece.speech.LAPCFG.PurdueParser -gr ${RUN_DIR}/lib/wsj-6.pml \
