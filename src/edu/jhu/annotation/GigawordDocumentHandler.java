@@ -28,350 +28,378 @@ import edu.stanford.nlp.util.CoreMap;
 import edu.stanford.nlp.trees.TreeCoreAnnotations.TreeAnnotation;
 
 public class GigawordDocumentHandler {
-	String inputpath;
-	BufferedReader input;
-	ArrayList<String> buffer;
-	int count = 0;
-	boolean endOfFile = false;
-	boolean useSGMLformat = true;
-	boolean debug = false;
-	ArrayList<String> docIds = null;
-	int docIdIndex = 0;
-	String docTypeName = "DOC", textTypeName = "TEXT", parsePrefix = "( (";
-	String currentDocument = null;
+    String inputpath;
+    BufferedReader input;
+    ArrayList<String> buffer;
+    int count = 0;
+    boolean endOfFile = false;
+    boolean useSGMLformat = true;
+    boolean debug = false;
+    ArrayList<String> docIds = null;
+    int docIdIndex = 0;
+    String docTypeName = "DOC", textTypeName = "TEXT", parsePrefix = "( (";
+    String currentDocument = null;
     boolean justSents = false;
     int sentenceCount = 1; // for flat files, no document structure
 
-	public GigawordDocumentHandler(String filepath) {
-		inputpath = filepath;
-		if (debug) {
-			System.err.println("Loading documents from " + inputpath);
-		}
+    public GigawordDocumentHandler(String filepath) {
+	inputpath = filepath;
+	if (debug) {
+	    System.err.println("Loading documents from " + inputpath);
 	}
+    }
 
-	/**
-	 * these options are currently untested, but they work in theory
-	 * 
-	 * @param useSGML
-	 * @param textTypeName
-	 * @param docTypeName
-	 * @param parsePrefix
-	 */
-	public void setOptions(boolean useSGML, String textTypeName,
-			       String docTypeName, String parsePrefix, boolean debug, boolean justSents) {
-		this.textTypeName = textTypeName;
-		this.docTypeName = docTypeName;
-		this.parsePrefix = parsePrefix;
-		this.useSGMLformat = useSGML;
-		this.justSents = justSents;
-		this.debug = debug;
-		if (debug) {
-			if (useSGMLformat) {
-				System.err.println("Using text type <" + textTypeName
-					+ ">, doc type <" + docTypeName + ">, and parse prefix \""
-					+ parsePrefix + "\".");
-			} else
-				System.err.println("Parse prefixis \"" + parsePrefix + "\".");
-		}
+    /**
+     * these options are currently untested, but they work in theory
+     * 
+     * @param useSGML
+     * @param textTypeName
+     * @param docTypeName
+     * @param parsePrefix
+     */
+    public void setOptions(boolean useSGML, String textTypeName,
+			   String docTypeName, String parsePrefix, boolean debug, boolean justSents) {
+	this.textTypeName = textTypeName;
+	this.docTypeName = docTypeName;
+	this.parsePrefix = parsePrefix;
+	this.useSGMLformat = useSGML;
+	this.justSents = justSents;
+	this.debug = debug;
+	if (debug) {
+	    if (useSGMLformat) {
+		System.err.println("Using text type <" + textTypeName
+				   + ">, doc type <" + docTypeName + ">, and parse prefix \""
+				   + parsePrefix + "\".");
+	    } else
+		System.err.println("Parse prefixis \"" + parsePrefix + "\".");
 	}
+    }
 
-	/**
-	 * can read gzip or uncompressed files
-	 * 
-	 * @throws IOException
-	 */
-	public void openReader() throws IOException {
-		InputStreamReader isr = null;
-		FileInputStream fis = new FileInputStream(inputpath);
-		if (inputpath.endsWith(".gz")) {
-			GZIPInputStream gzis = new GZIPInputStream(fis);
-			isr = new InputStreamReader(gzis);
-		} else {
-			isr = new InputStreamReader(fis);
-		}
-		input = new BufferedReader(isr);
-		String s = null;
-		int i = 0;
-		// maintain all header info before the first doc element (default is
-		// "DOC")
-		if (useSGMLformat) {
-		    while (!(s = input.readLine()).trim().startsWith("<" + docTypeName)) {
-			i++;
-			System.out.println(s);
-			input.mark(0);
-		}
-		input.reset();
-		}
+    /**
+     * can read gzip or uncompressed files
+     * 
+     * @throws IOException
+     */
+    public void openReader() throws IOException {
+	InputStreamReader isr = null;
+	FileInputStream fis = new FileInputStream(inputpath);
+	if (inputpath.endsWith(".gz")) {
+	    GZIPInputStream gzis = new GZIPInputStream(fis);
+	    isr = new InputStreamReader(gzis);
+	} else {
+	    isr = new InputStreamReader(fis);
 	}
-
-	public boolean fileEmpty() {
-		return endOfFile;
+	input = new BufferedReader(isr);
+	String s = null;
+	int i = 0;
+	// maintain all header info before the first doc element (default is
+	// "DOC")
+	if (useSGMLformat) {
+	    while (!(s = input.readLine()).trim().startsWith("<" + docTypeName)) {
+		i++;
+		System.out.println(s);
+		input.mark(0);
+	    }
+	    input.reset();
 	}
+    }
 
-	/**
-	 * use this to only annotate specific DOC ids in the file, and path has a
-	 * list of the DOC ids to annotate
-	 * 
-	 * @param path
-	 * @throws IOException
-	 */
-	public void setDocList(String path) throws IOException {
-		docIds = new ArrayList<String>();
-		File f = new File(path);
-		if (!f.exists()) {
-			docIds.add(path);
-			return;
-		}
-		FileInputStream fis = new FileInputStream(path);
-		InputStreamReader isr = new InputStreamReader(fis);
-		BufferedReader in = new BufferedReader(isr);
-		String line;
-		while ((line = in.readLine()) != null) {
-			docIds.add(line.trim());
-		}
-		in.close();
-		isr.close();
-		fis.close();
+    public boolean fileEmpty() {
+	return endOfFile;
+    }
+
+    /**
+     * use this to only annotate specific DOC ids in the file, and path has a
+     * list of the DOC ids to annotate
+     * 
+     * @param path
+     * @throws IOException
+     */
+    public void setDocList(String path) throws IOException {
+	docIds = new ArrayList<String>();
+	File f = new File(path);
+	if (!f.exists()) {
+	    docIds.add(path);
+	    return;
 	}
+	FileInputStream fis = new FileInputStream(path);
+	InputStreamReader isr = new InputStreamReader(fis);
+	BufferedReader in = new BufferedReader(isr);
+	String line;
+	while ((line = in.readLine()) != null) {
+	    docIds.add(line.trim());
+	}
+	in.close();
+	isr.close();
+	fis.close();
+    }
 
-	/**
-	 * prints out any lines left in the buffer or unread in the file before
-	 * closing the bufferedreader
-	 * 
-	 * @throws IOException
-	 */
-	public void closeReader() throws IOException {
-		String line;
-		while ((line = input.readLine()) != null) {
-			System.out.println(line);
-		}
+    /**
+     * prints out any lines left in the buffer or unread in the file before
+     * closing the bufferedreader
+     * 
+     * @throws IOException
+     */
+    public void closeReader() throws IOException {
+	String line;
+	while ((line = input.readLine()) != null) {
+	    System.out.println(line);
+	}
+	endOfFile = true;
+	input.close();
+    }
+
+    /**
+     * read the next document (with the type docEntity, default DOC) and convert
+     * it to a Stanford annotation
+     * 
+     * @return
+     * @throws IOException
+     */
+    public Annotation getNextDocumentAnnotation() throws IOException {
+	ArrayList<CoreMap> sentences = new ArrayList<CoreMap>();
+	String line = "";
+	boolean inText = false;
+	int docSize = 0;
+
+	// inDocToAnnotate is always true unless a list of docIds is provided.
+	// See setDocList().
+	boolean inDocToAnnotate = true;
+	boolean everEnteredDoc = false;
+	if (docIds != null)
+	    inDocToAnnotate = false;
+
+	while (true) {
+	    line = input.readLine();
+	    if (line == null) {
 		endOfFile = true;
-		input.close();
-	}
-
-	/**
-	 * read the next document (with the type docEntity, default DOC) and convert
-	 * it to a Stanford annotation
-	 * 
-	 * @return
-	 * @throws IOException
-	 */
-	public Annotation getNextDocumentAnnotation() throws IOException {
-		ArrayList<CoreMap> sentences = new ArrayList<CoreMap>();
-		String line = "";
-		boolean inText = false;
-		int docSize = 0;
-
-		// inDocToAnnotate is always true unless a list of docIds is provided.
-		// See setDocList().
-		boolean inDocToAnnotate = true;
-		if (docIds != null)
-			inDocToAnnotate = false;
-
-		while (true) {
-			line = input.readLine();
-			if (line == null) {
-				endOfFile = true;
-				break;
-			}
-			line = line.trim();
-			if (useSGMLformat) {
-				if (!inText && line.startsWith("<" + docTypeName)) {
-					if (!inDocToAnnotate
-							&& line.contains(docIds.get(docIdIndex))) {
-						inDocToAnnotate = true;
-						docIdIndex++;
-					}
-					currentDocument = line;
-					if (debug)
-						System.err.println("Reading " + currentDocument);
-				}
-				if (!inDocToAnnotate)
-					continue;
-				if (!inText && line.startsWith("<" + textTypeName + ">")) {
-					inText = true;
-				}
-				if (!inText && line.startsWith("</" + docTypeName)) {
-					break;
-				} else if (inText) {
-					if (line.startsWith("</" + textTypeName)) {
-						inText = false;
-					} 
-				}
-				System.out.println(line);
-			} else {
-				inText = true;
-			}
-
-			if (inText && line.startsWith(parsePrefix)) {
-				docSize++;
-				CoreMap newSentence = getSentence(line);
-				if (newSentence != null) {
-					sentences.add(newSentence);
-				}
-				if (justSents && docSize % 100 == 0) {
-				    if (debug) System.err.println("annotating "+docSize);
-				    return sentencesToDocument(sentences);
-				}
-
-			}
+		break;
+	    }
+	    line = line.trim();
+	    if (useSGMLformat) {
+		//Determine what stage of the document we're in.
+		//Identity-transduce everything, but for the purposes
+		//of annotation, we only about *parsed* sentences.
+		if (!inText && line.startsWith("<" + docTypeName)) {
+		    if (!inDocToAnnotate
+			&& line.contains(docIds.get(docIdIndex))) {
+			inDocToAnnotate = true;
+			docIdIndex++;
+		    }
+		    everEnteredDoc=true;
+		    currentDocument = line;
+		    if (debug)
+			System.err.println("Reading " + currentDocument);
 		}
 		if (!inDocToAnnotate)
-			return null;
-		return sentencesToDocument(sentences);
+		    continue;
+		if (!inText && line.startsWith("<" + textTypeName + ">")) {
+		    inText = true;
+		}
+		if (!inText && line.startsWith("</" + docTypeName)) {
+		    //everEnteredDoc=false;
+		    break;
+		} else if (inText) {
+		    if (line.startsWith("</" + textTypeName)) {
+			inText = false;
+		    } 
+		}
+		System.out.println(line);
+	    } else {
+		//multi-sentence paragraphs
+		inText = true;
+	    }
+
+	    if (inText && line.startsWith(parsePrefix)) {
+		docSize++;
+		CoreMap newSentence = getSentence(line);
+		if (newSentence != null) {
+		    sentences.add(newSentence);
+		}
+		if (justSents && docSize % 100 == 0) {
+		    if (debug) System.err.println("annotating "+docSize);
+		    return sentencesToDocument(sentences);
+		}
+
+	    }
 	}
+	if (!inDocToAnnotate)
+	    return null;
+	Annotation annotationsToReturn = sentencesToDocument(sentences);
+	//fmof: the error handling here is to fix a known bug (</DOC> not
+	//printing when document has not annotable sentences). Hopefully 
+	//that fixes the other bugs but I'm not 100%. So, this checking 
+	//is a bit redundant, but I'd rather not mess anything up. 
+	if(annotationsToReturn == null){ 
+	    if(debug){
+		System.err.println("--------------");
+		System.err.println("number of sentences: " + sentences.size());
+		System.err.println("inText: " + inText);
+		System.err.println("inDocToAnnotate: " + inDocToAnnotate);
+		System.err.println("everEnteredDoc:  " + everEnteredDoc);
+		System.err.println("-------------");
+	    }
+	    if(sentences.size()==0) {//known bug
+		if(!inText && inDocToAnnotate && everEnteredDoc){
+		    System.out.println("</" + docTypeName + ">");
+		}
+	    }
+	}
+	return annotationsToReturn;
+    }
 	
-	/**
-	 * not used here, but escapes/converts tokens for XML
-	 * 
-	 * @param s
-	 * @return
-	 */
-	public String escapeXmlCharacters(String s) {
-		s = s.replace("&", "&amp;");
-		s = s.replace("<", "&lt;");
-		s = s.replace(">", "&gt;");
-		char[] cc = s.toCharArray();
-		for (char c : cc) {
-			// substitute a dollar sign for all other currency signs
-			if (c > 161 && c < 166) {
-				s = s.replace("" + c, "$");
-			}
-		}
-		return s;
+    /**
+     * not used here, but escapes/converts tokens for XML
+     * 
+     * @param s
+     * @return
+     */
+    public String escapeXmlCharacters(String s) {
+	s = s.replace("&", "&amp;");
+	s = s.replace("<", "&lt;");
+	s = s.replace(">", "&gt;");
+	char[] cc = s.toCharArray();
+	for (char c : cc) {
+	    // substitute a dollar sign for all other currency signs
+	    if (c > 161 && c < 166) {
+		s = s.replace("" + c, "$");
+	    }
 	}
+	return s;
+    }
 
-	/**
-	 * convert a parsed String into a CoreMap annotation
-	 * 
-	 * @param parse
-	 * @return
-	 * @throws IOException
-	 */
-	public CoreMap getSentence(String parse) throws IOException {
-		if (parse.trim().length() == 0) {
-			if (debug) {
-				System.err.println("Empty parse in " + currentDocument);
-			}
-			return null;
-		}
-		Tree tree = Tree.valueOf(parse);
-
-		String text = getText(tree);
-		if (text == null) {
-			if (debug) {
-				System.err.println(currentDocument + ": No leaves in tree: "
-						+ parse);
-			}
-
-			return null;
-		}
-		Annotation sentence = new Annotation(text);
-		sentence.set(TreeAnnotation.class, tree);
-		List<Tree> leaves = tree.getLeaves();
-		List<CoreLabel> tokens = new ArrayList<CoreLabel>(leaves.size());
-		sentence.set(TokensAnnotation.class, tokens);
-		for (int i = 0; i < leaves.size(); i++) {
-			Tree leaf = leaves.get(i);
-			CoreLabel token = (CoreLabel) leaf.label();
-			tokens.add(token);
-		}
-		try {
-			for (Tree leaf : leaves) {
-				CoreLabel token = (CoreLabel) leaf.label();
-				token.set(PartOfSpeechAnnotation.class, leaf.parent(tree)
-						.value());
-			}
-		} catch (NullPointerException e) {
-			if (debug) {
-				System.err.println("Error in " + currentDocument);
-				e.printStackTrace();
-			}
-			return null;
-		}
-		return sentence;
+    /**
+     * convert a parsed String into a CoreMap annotation
+     * 
+     * @param parse
+     * @return
+     * @throws IOException
+     */
+    public CoreMap getSentence(String parse) throws IOException {
+	if (parse.trim().length() == 0) {
+	    if (debug) {
+		System.err.println("Empty parse in " + currentDocument);
+	    }
+	    return null;
 	}
+	Tree tree = Tree.valueOf(parse);
 
-	/**
-	 * convert a list of sentences into a document Annotation
-	 * 
-	 * @param sentences
-	 * @return
-	 */
-	public Annotation sentencesToDocument(List<CoreMap> sentences) {
-		if (sentences.size() == 0) {
-			if (debug) {
-				System.err.println("0 sentences in document" + currentDocument);
-			}
-			return null;
-		}
-		String docText = null;
-		Annotation document = new Annotation(docText);
-		document.set(SentencesAnnotation.class, sentences);
-		List<CoreLabel> docTokens = new ArrayList<CoreLabel>();
-		int sentIndex = 1;
-		if (justSents) {
-		    sentIndex = sentenceCount;
-		}
-		int tokenBegin = 0;
-		for (CoreMap sentAnno : sentences) {
-			if (sentAnno == null) {
-				continue;
-			}
-			List<CoreLabel> sentTokens = sentAnno.get(TokensAnnotation.class);
-			docTokens.addAll(sentTokens);
-			int tokenEnd = tokenBegin + sentTokens.size();
-			sentAnno.set(TokenBeginAnnotation.class, tokenBegin);
-			sentAnno.set(TokenEndAnnotation.class, tokenEnd);
-			sentAnno.set(SentenceIndexAnnotation.class, sentIndex);
-			sentIndex++;
-			sentenceCount++;
-			tokenBegin = tokenEnd;
-		}
-		document.set(TokensAnnotation.class, docTokens);
-		int i = 0;
-		for (CoreLabel token : docTokens) {
-			String tokenText = token.get(TextAnnotation.class);
-			token.set(CharacterOffsetBeginAnnotation.class, i);
-			i += tokenText.length();
-			token.set(CharacterOffsetEndAnnotation.class, i);
-			i++; // Skip space
-		}
-		for (CoreMap sentenceAnnotation : sentences) {
-			if (sentenceAnnotation == null) {
-				continue;
-			}
-			List<CoreLabel> sentenceTokens = sentenceAnnotation
-					.get(TokensAnnotation.class);
-			sentenceAnnotation.set(
-					CharacterOffsetBeginAnnotation.class,
-					sentenceTokens.get(0).get(
-							CharacterOffsetBeginAnnotation.class));
-			sentenceAnnotation.set(
-					CharacterOffsetEndAnnotation.class,
-					sentenceTokens.get(sentenceTokens.size() - 1).get(
-							CharacterOffsetEndAnnotation.class));
-		}
-		return document;
-	}
+	String text = getText(tree);
+	if (text == null) {
+	    if (debug) {
+		System.err.println(currentDocument + ": No leaves in tree: "
+				   + parse);
+	    }
 
-	/**
-	 * convert a tree t to its token representation
-	 * 
-	 * @param t
-	 * @return
-	 * @throws IOException
-	 */
-	public String getText(Tree t) throws IOException {
-		StringBuffer sb = new StringBuffer();
-		if (t == null) {
-			return null;
-		}
-		for (Tree tt : t.getLeaves()) {
-			sb.append(tt.value());
-			sb.append(" ");
-		}
-		return sb.toString().trim();
+	    return null;
 	}
+	Annotation sentence = new Annotation(text);
+	sentence.set(TreeAnnotation.class, tree);
+	List<Tree> leaves = tree.getLeaves();
+	List<CoreLabel> tokens = new ArrayList<CoreLabel>(leaves.size());
+	sentence.set(TokensAnnotation.class, tokens);
+	for (int i = 0; i < leaves.size(); i++) {
+	    Tree leaf = leaves.get(i);
+	    CoreLabel token = (CoreLabel) leaf.label();
+	    tokens.add(token);
+	}
+	try {
+	    for (Tree leaf : leaves) {
+		CoreLabel token = (CoreLabel) leaf.label();
+		token.set(PartOfSpeechAnnotation.class, leaf.parent(tree)
+			  .value());
+	    }
+	} catch (NullPointerException e) {
+	    if (debug) {
+		System.err.println("Error in " + currentDocument);
+		e.printStackTrace();
+	    }
+	    return null;
+	}
+	return sentence;
+    }
+
+    /**
+     * convert a list of sentences into a document Annotation<br/>
+     * If given no sentences, returns null.
+     * 
+     * @param sentences
+     * @return
+     */
+    public Annotation sentencesToDocument(List<CoreMap> sentences) {
+	if (sentences.size() == 0) {
+	    if (debug) {
+		System.err.println("0 sentences in document" + currentDocument);
+	    }
+	    return null;
+	}
+	String docText = null;
+	Annotation document = new Annotation(docText);
+	document.set(SentencesAnnotation.class, sentences);
+	List<CoreLabel> docTokens = new ArrayList<CoreLabel>();
+	int sentIndex = 1;
+	if (justSents) {
+	    sentIndex = sentenceCount;
+	}
+	int tokenBegin = 0;
+	for (CoreMap sentAnno : sentences) {
+	    if (sentAnno == null) {
+		continue;
+	    }
+	    List<CoreLabel> sentTokens = sentAnno.get(TokensAnnotation.class);
+	    docTokens.addAll(sentTokens);
+	    int tokenEnd = tokenBegin + sentTokens.size();
+	    sentAnno.set(TokenBeginAnnotation.class, tokenBegin);
+	    sentAnno.set(TokenEndAnnotation.class, tokenEnd);
+	    sentAnno.set(SentenceIndexAnnotation.class, sentIndex);
+	    sentIndex++;
+	    sentenceCount++;
+	    tokenBegin = tokenEnd;
+	}
+	document.set(TokensAnnotation.class, docTokens);
+	int i = 0;
+	for (CoreLabel token : docTokens) {
+	    String tokenText = token.get(TextAnnotation.class);
+	    token.set(CharacterOffsetBeginAnnotation.class, i);
+	    i += tokenText.length();
+	    token.set(CharacterOffsetEndAnnotation.class, i);
+	    i++; // Skip space
+	}
+	for (CoreMap sentenceAnnotation : sentences) {
+	    if (sentenceAnnotation == null) {
+		continue;
+	    }
+	    List<CoreLabel> sentenceTokens = sentenceAnnotation
+		.get(TokensAnnotation.class);
+	    sentenceAnnotation.set(
+				   CharacterOffsetBeginAnnotation.class,
+				   sentenceTokens.get(0).get(
+							     CharacterOffsetBeginAnnotation.class));
+	    sentenceAnnotation.set(
+				   CharacterOffsetEndAnnotation.class,
+				   sentenceTokens.get(sentenceTokens.size() - 1).get(
+										     CharacterOffsetEndAnnotation.class));
+	}
+	return document;
+    }
+
+    /**
+     * convert a tree t to its token representation
+     * 
+     * @param t
+     * @return
+     * @throws IOException
+     */
+    public String getText(Tree t) throws IOException {
+	StringBuffer sb = new StringBuffer();
+	if (t == null) {
+	    return null;
+	}
+	for (Tree tt : t.getLeaves()) {
+	    sb.append(tt.value());
+	    sb.append(" ");
+	}
+	return sb.toString().trim();
+    }
 
 }

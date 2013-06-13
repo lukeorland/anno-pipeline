@@ -3,6 +3,8 @@
 #
 # Courtney Napoles, cdnapoles@gmail.com
 # 2012-07-03
+# edited Frank Ferraro, ferraro@cs.jhu.edu
+#        2013-06-06 to 2013-06-12
 
 NOTES
 
@@ -19,10 +21,17 @@ Be sure to set the environment encoding to UTF-8.
 
 
 USAGE
+The default is to run in parallel across different nodes:
+./pipeline file_to_annotate.xml working_directory recaser_host [OPTIONS]
 
-To run:
+To run *sequentially* on current machine:
 
-./pipeline file_to_annotate.xml working_directory [OPTIONS]
+./pipeline file_to_annotate.xml working_directory recaser_host --qsub f [OPTIONS]
+
+To run *sequentially* on remote machine (via qsub):
+
+./run_sequential_grid.sh file_to_annotate.xml working_directory recaser_host [OPTIONS]
+
 
 To just run the annotators:
 java -Xmx16g -cp bin:lib/stanford-corenlp-2012-05-22.jar:lib/my-xom.jar:lib/stanford-corenlp-2012-05-22-models.jar:lib/joda-time.jar \
