@@ -58,7 +58,7 @@ The final annotation will be saved in DIR/FILE.annotated.xml"
 }
 
 function check_recase_status {
-    if [[ $recase ]]; then
+    if ${FLAGS["recase"]} ; then
 	if [[ -z "$RECASER_SERVER_UP" ]]; then
 	    if [[ -z "$(nc -z ${RECASER_HOST} ${RECASER_PORT})" ]]; then
 		echo "Please start RECASER server and set RECASER_PORT and RECASER_HOST appropriately."
@@ -69,7 +69,7 @@ function check_recase_status {
     fi
 }
 
-if [ $# -lt 3 ]; then
+if [ $# -lt 2 ]; then
     usage
 fi
 
@@ -102,8 +102,14 @@ shift
 
 wrkdir=$1/${TIMESTAMP}
 shift
-RECASER_HOST="$1"
-shift
+RECASER_HOST=
+if [[ "${1:0:2}" = "--" ]]; then #RECASER_HOST not set
+    recaser_set=false
+else
+    recaser_set=true
+    RECASER_HOST="$1"
+    shift
+fi
 
 #file prefix
 f=''
@@ -287,6 +293,11 @@ if ! $doc ; then
     fi
 fi
 
+if ! $recaser_set && ${FLAGS["recase"]} ; then
+    echo "You want to recase, but recaser host isn't set."
+    usage
+fi
+
 check_recase_status
 if [[ ! -e "${RECASER_SCRIPT}" ]] && ${FLAGS["recase"]} ; then
     echo "We want to true case the text, but can't find the script!"
@@ -354,7 +365,7 @@ if [[ ! -e $wrkdir/$f.single_file ]] || [[ $force_rewrite -eq 1 ]]; then
 	echo $cmd
 	eval $cmd
     else #dealing with a file
-	f=`basename $origfile`
+	f=`basename $INPUT`
 	f=${f%.*}
 	if [[ $sym_link_okay ]]; then
 	    ln -s ${INPUT} $wrkdir/$f.single_file
@@ -368,22 +379,27 @@ fi
 
 declare -A CMDS
 declare -A ARGS
-
+#declare -A NEEDED
 # 1. Concatenate lines of text and split into sentences
+#NEEDED["split"]=( "$wrkdir/$f.single_file" )
 CMDS["split"]="${RUN_DIR}/scripts/scat $wrkdir/$f.single_file | \
 	python ${RUN_DIR}/scripts/split_sentences.py > $wrkdir/$f.split"
 # 2. Tokenize sentences
+#NEEDED["tok"]=( "$wrkdir/$f.split" )
 CMDS["tok"]="java -mx${TOKENIZER_HEAP} -cp ${RUN_DIR}/lib/stanford-corenlp-2012-05-22.jar \
 	edu.stanford.nlp.process.PTBTokenizer -options ptb3Escaping \
         -preserveLines $wrkdir/$f.split > $wrkdir/$f.tok"
 # 3. Separate SGML markup from tokenized lines (necessary because the 
 #    parser does not skip markup).
+#NEEDED["sgml"]=( "$wrkdir/$f.tok" )
 CMDS["sgml"]="cat $wrkdir/$f.tok | python ${RUN_DIR}/scripts/separate_lines.py \
 	$wrkdir/$f.markup > $wrkdir/$f.to_parse"
 # 3a. Replace non-breaking spaces introduced by the PTB tokenizer in 
 #     lines containing SGML markup.
+#NEEDED["nbsp"]=( "$wrkdir/$f.markup" )
 CMDS["nbsp"]="perl -p -ibak -e 's/\x{c2}\x{a0}/ /g;' $wrkdir/$f.markup"
 # 3b. Recase
+#NEEDED["recase"]=( "$wrkdir/$f.to_parse" )
 ARGS["recase"]="RECASER_HOST=${RECASER_HOST} RECASER_PORT=${RECASER_PORT}"
 CMDS["recase"]="${RECASER_SCRIPT} $wrkdir/$f.to_parse > $wrkdir/$f.recased"
 # 4. Parse
@@ -393,17 +409,20 @@ if ${FLAGS["recase"]} ; then
 else
     parse_input_suffix="markup"
 fi
+#NEEDED["parse"]=( "$wrkdir/$f.$parse_input_suffix" )
 CMDS["parse"]="java -Xmx${PARSE_HEAP} -ss${PARSE_SS} -cp ${RUN_DIR}/lib/umd-parser.jar \
 	edu.purdue.ece.speech.LAPCFG.PurdueParser -gr ${RUN_DIR}/lib/wsj-6.pml \
         -input $wrkdir/$f.$parse_input_suffix -output $wrkdir/$f.parse -jobs ${PARSE_WORKERS}"
 # 5. Merge markup and parses into one file and make legal XML (by adding a root
 #    node and escaping <>&.
+#NEEDED["merge"]=( "$wrkdir/$f.markup" "$wrkdir/$f.parse" )
 CMDS["merge"]="perl ${RUN_DIR}/scripts/merge_file.pl $wrkdir/$f.parse $wrkdir/$f.markup \
 	> $wrkdir/$f.merged"
 # 6. Annotate file with modified Stanford pipeline and convert to true XML
 #    This assumes that the file will be structured as <FILE><DOC><TEXT>parsed 
 #    lines</TEXT></DOC></FILE>. For more options see 
 #    edu.jhu.annotation.GigawordAnnotator
+#NEEDED["annotate"]=( "$wrkdir/$f.merged" )
 CMDS["annotate"]="java -Xmx${ANNOTATE_HEAP} -Dfile.encoding=UTF-8 -cp ${RUN_DIR}/bin:${RUN_DIR}/lib/stanford-corenlp-2012-05-22.jar:${RUN_DIR}/lib/my-xom.jar:${RUN_DIR}/lib/stanford-corenlp-2012-05-22-models.jar:${RUN_DIR}/lib/joda-time.jar \
     edu.jhu.annotation.GigawordAnnotator --in $wrkdir/$f.merged $anno_flags > $wrkdir/$f.annotated.xml 2>> $wrkdir/$f.errors"
 # This is a bad hack that you need if illegal UTF8 characters are present
@@ -420,11 +439,13 @@ else
     runner=run_ncmd
 fi
 
+prev_step=
 for step in "${STEPS[@]}"; do
     echo -e "STEP $step (${FLAGS[$step]})"
     if ${FLAGS[$step]} ; then
 	$runner "$step" "${CMDS[$step]}" "${ARGS[$step]}"
 	echo -e "\n==========================\n"
     fi
+    prev_step=$step
 done
 exit
