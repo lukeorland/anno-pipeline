@@ -83,6 +83,7 @@ RUN_DIR=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)/
 : ${TIMESTAMP=$(date +%Y%m%d-%H%M%S)}
 : ${sym_link_okay=1}
 : ${DIR_TO_SINGLE_FILE="perl ${RUN_DIR}/scripts/raw_text_to_agiga_input.pl"}
+: ${CONVERT_INPUT=false}
 : ${RECASER_SCRIPT="${RUN_DIR}/scripts/recase.sh"}
 RECASER_SCRIPT="$(readlink -f $RECASER_SCRIPT)"
 
@@ -92,7 +93,7 @@ RECASER_SCRIPT="$(readlink -f $RECASER_SCRIPT)"
 
 
 INPUT=$(readlink -f "$1")
-if [[ ! -d $INPUT ]] || [[ ! -e $INPUT ]]; then
+if [[ ! -d "$INPUT" ]] && [[ ! -e "$INPUT" ]]; then
     echo "input \"$1\" doesn't exist"
     echo "$INPUT"
     exit 1
@@ -348,7 +349,7 @@ f=to_anno.${TIMESTAMP}
 #put this control structure before above loop
 # 0. make sure everything's in a single file
 if [[ ! -e $wrkdir/$f.single_file ]] || [[ $force_rewrite -eq 1 ]]; then
-    if [[ -d ${INPUT} ]]; then #we're dealing with a directory
+    if [[ -d ${INPUT} ]] || $CONVERT_INPUT ; then #we're dealing with a directory
 	cmd="$DIR_TO_SINGLE_FILE $(find "$INPUT" -type f) > $wrkdir/$f.single_file"
 	echo $cmd
 	eval $cmd
@@ -365,9 +366,9 @@ else
     echo "Single file already exists, or force_rewrite = 0" 1>&2
 fi
 
-
 declare -A CMDS
 declare -A ARGS
+
 # 1. Concatenate lines of text and split into sentences
 CMDS["split"]="${RUN_DIR}/scripts/scat $wrkdir/$f.single_file | \
 	python ${RUN_DIR}/scripts/split_sentences.py > $wrkdir/$f.split"
@@ -386,9 +387,15 @@ CMDS["nbsp"]="perl -p -ibak -e 's/\x{c2}\x{a0}/ /g;' $wrkdir/$f.markup"
 ARGS["recase"]="RECASER_HOST=${RECASER_HOST} RECASER_PORT=${RECASER_PORT}"
 CMDS["recase"]="${RECASER_SCRIPT} $wrkdir/$f.to_parse > $wrkdir/$f.recased"
 # 4. Parse
+parse_input_suffix=
+if ${FLAGS["recase"]} ; then
+    parse_input_suffix="recased"
+else
+    parse_input_suffix="markup"
+fi
 CMDS["parse"]="java -Xmx${PARSE_HEAP} -ss${PARSE_SS} -cp ${RUN_DIR}/lib/umd-parser.jar \
 	edu.purdue.ece.speech.LAPCFG.PurdueParser -gr ${RUN_DIR}/lib/wsj-6.pml \
-        -input $wrkdir/$f.recased -output $wrkdir/$f.parse -jobs ${PARSE_WORKERS}"
+        -input $wrkdir/$f.$parse_input_suffix -output $wrkdir/$f.parse -jobs ${PARSE_WORKERS}"
 # 5. Merge markup and parses into one file and make legal XML (by adding a root
 #    node and escaping <>&.
 CMDS["merge"]="perl ${RUN_DIR}/scripts/merge_file.pl $wrkdir/$f.parse $wrkdir/$f.markup \
