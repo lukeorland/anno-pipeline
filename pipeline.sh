@@ -36,7 +36,7 @@
 # edited Frank Ferraro, ferraro@cs.jhu.edu: 2013-06-10
 
 function usage {
-    echo "Usage: ./pipeline INPUT_DIR DIR RECASER_HOST [OPTIONS] 
+    echo "Usage: ./pipeline INPUT_DIR DIR [RECASER_HOST] [OPTIONS] 
 
 INPUT_DIR is the input directory and DIR is the directory where intermediate
 files and the annotated file are saved. Options are
@@ -368,6 +368,9 @@ if [[ ! -e $wrkdir/$f.single_file ]] || [[ $force_rewrite -eq 1 ]]; then
 	f=`basename $INPUT`
 	f=${f%.*}
 	if [[ $sym_link_okay ]]; then
+	    if [[ -L "$wrkdir/$f.single_file" ]]; then
+		unlink "$wrkdir/$f.single_file"
+	    fi
 	    ln -s ${INPUT} $wrkdir/$f.single_file
 	else
 	    cp ${INPUT} $wrkdir/$f.single_file
@@ -407,7 +410,7 @@ parse_input_suffix=
 if ${FLAGS["recase"]} ; then
     parse_input_suffix="recased"
 else
-    parse_input_suffix="markup"
+    parse_input_suffix="to_parse"
 fi
 #NEEDED["parse"]=( "$wrkdir/$f.$parse_input_suffix" )
 CMDS["parse"]="java -Xmx${PARSE_HEAP} -ss${PARSE_SS} -cp ${RUN_DIR}/lib/umd-parser.jar \

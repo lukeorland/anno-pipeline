@@ -1,0 +1,17 @@
+<FILE id="small-sample">
+<FILE id="small-sample.xml">
+<DOC id="Johns Hopkins" type="Wikipedia article" accessed="5/30/2012 3:46pm">
+<TEXT>
+<P>
+( (S (NP (NP (NNP Johns) (NNP Hopkins)) (PRN (-LRB- -LRB-) (NP (NNP May) (CD 19) (, ,) (CD 1795)) (: --) (NP (NNP December) (CD 24) (, ,) (CD 1873)) (-RRB- -RRB-))) (VP (VBD was) (NP (NP (DT an) (JJ American) (NN entrepreneur) (, ,) (NN abolitionist) (CC and) (NN philanthropist)) (PP (IN of) (NP (NP (JJ 19th-century) (NNP Baltimore)) (, ,) (NP (NNP Maryland)))))) (. .)))
+</P>
+<P>
+( (S (NP (PRP$ His) (NNS bequests)) (VP (VBD founded) (NP (NP (JJ numerous) (NNS institutions)) (VP (VBG bearing) (NP (NP (PRP$ his) (NN name)) (, ,) (PP (VBG including) (NP (NP (NNP Johns) (NNP Hopkins) (NNP Hospital)) (, ,) (NP (NNP Johns) (NNP Hopkins) (NNP University)) (, ,) (NP (NP (NNP Johns) (NNP Hopkins) (NNP School)) (PP (IN of) (NP (NNP Nursing)))) (, ,) (NP (NP (NNP Johns) (NNP Hopkins) (NNP School)) (PP (IN of) (NP (NNP Medicine)))) (, ,) (CC and) (NP (NP (NNP Johns) (NNP Hopkins) (NNP Bloomberg) (NNP School)) (PP (IN of) (NP (NNP Public) (NNP Health)))))))))) (. .)))
+</P>
+<P>
+( (S (NP (NP (NP (NP (DT A) (NN biography)) (VP (VBN entitled) (S (NP (NNP Johns) (NNP Hopkins))))) (: :) (NP (NP (DT A) (NN Silhouette)) (VP (VBN written) (PP (IN by) (NP (PRP$ his) (NN cousin)))))) (, ,) (NP (NNP Helen) (NNP Hopkins) (NNP Thom)) (, ,)) (VP (AUXD was) (VP (VBN published) (PP (IN in) (NP (CD 1929))) (PP (IN by) (NP (DT the) (NNP Johns) (NNP Hopkins) (NNP University) (NNP Press))))) (. .)))
+</P>
+</TEXT>
+</DOC>
+</FILE>
+</FILE>
