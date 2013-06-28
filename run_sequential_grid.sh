@@ -4,8 +4,6 @@
 #$ -N annotate
 #$ -S /bin/bash
 #$ -V
-#$ -m easb
-#$ -M ferraro@cs.jhu.edu
 
 # pipeline.sh
 # author: Jonny Weese <jonny@cs.jhu.edu>

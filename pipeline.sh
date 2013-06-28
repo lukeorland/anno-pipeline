@@ -5,16 +5,17 @@
 # Stanford CoreNLP pipeline (including dependencies, coref
 # chains, and NER).
 #
-# ./pipeline FILE DIR [OPTIONS]
+# ./pipeline INPUT OUTPUT_DIR [OPTIONS]
 #
-# where FILE is the input file and DIR is the directory where
+# where INPUT is the input file or directory and 
+# OUTPUT_DIR is the directory where
 # the intermediate files (necessary for the pipeline) and 
 # annotated file are saved.
 #
 # Options are
 # --tok      t|f   : perform tokenization (default: t)
 # --split    t|f   : perform sentence segmentation (default: t)
-# --recase   t|f   : perform true-casing (default: t)
+# --recase   t|f   : perform true-casing (default: f)
 # --nbsp     t|f   : remove non-breaking spaces (default: t)
 # --sgml     t|f   : FILE is in SGML format (default: t)
 # --parsed   t|f   : input is parsed (default: f)
@@ -36,16 +37,22 @@
 # edited Frank Ferraro, ferraro@cs.jhu.edu: 2013-06-10
 
 function usage {
-    echo "Usage: ./pipeline INPUT_DIR DIR [RECASER_HOST] [OPTIONS] 
+    echo "Usage: ./pipeline INPUT OUTPUT_DIR [RECASER_HOST] [OPTIONS] 
 
-INPUT_DIR is the input directory and DIR is the directory where intermediate
-files and the annotated file are saved. Options are
+INPUT is the input directory or file and 
+OUTPUT_DIR is the directory where intermediate
+files and the annotated file are saved. When INPUT
+is a directory, *all* files within it (recursively) are
+catted to a single file.
+
+The options are
     --tok      t|f   : perform tokenization (default: t)
     --split    t|f   : perform sentence segmentation (default: t)
-    --recase   t|f   : perform true-casing (default: t)
+    --recase   t|f   : perform true-casing (default: f)
     --nbsp     t|f   : remove non-breaking spaces (default: t)
     --sgml     t|f   : FILE is in SGML format (default: t)
-    --parsed   t|f   : input is parsed (default: f)
+    --parsed   t|f   : input is parsed (default: f)*
+    --do_parse t|f   : perform parsing (default: t)*
     --merge    t|f   : merge parses with mark-up
     --end_hack t|f   : use a hack at the end to remove any unwanted 
                        unicode characters (default: f)
@@ -53,7 +60,11 @@ files and the annotated file are saved. Options are
                        if f, then coreference resolution is not done
     --qsub     t|f   : parallelize via qsub (default: t)
 
-The final annotation will be saved in DIR/FILE.annotated.xml"
+Note that \"--parsed f\" is equivalent to \"--do_parse t.\" This redundancy 
+is due to previous versions of the pipeline.
+
+The final annotation will be saved in DIR/FILE.annotated.xml
+"
     exit
 }
 
@@ -188,9 +199,14 @@ for step in "${STEPS[@]}"; do
     FLAGS["${step}"]=true
     i=$(($i+1))
 done
+FLAGS["recase"]=false
 FLAGS["end_hack"]=false
 doc=true
 anno_flags=""
+
+
+consistency_from_parsed=
+consistency_from_do_parse=
 
 while true; do
     case "$1" in
@@ -237,9 +253,17 @@ while true; do
 		*) usage ;;
 		esac ;;
 	--parsed)
+	    consistency_from_parsed="$2"
 	    case "$2" in
 		t) FLAGS["parse"]=false ; shift 2 ;;
 		f) FLAGS["parse"]=true ; shift 2 ;;
+		*) usage ;;
+		esac ;;
+	--do_parse)
+	    consistency_from_do_parse="$2"
+	    case "$2" in
+		t) FLAGS["parse"]=true ; shift 2 ;;
+		f) FLAGS["parse"]=false ; shift 2 ;;
 		*) usage ;;
 		esac ;;
 	--doc)
@@ -267,6 +291,14 @@ while true; do
     esac
 done
 
+if [[ ! -z "$consistency_from_parsed" ]] && [[ ! -z "$consistency_from_do_parse" ]]; then
+    if [[ "$consistency_from_parsed" == "$consistency_from_do_parse" ]]; then
+	echo -ne "You set --parsed $consistency_from_parsed, but --do_parse "
+	echo -ne "$consistency_from_do_parse.\nThese are inconsistent.\n"
+	usage
+    fi
+fi
+
 if $consistent_flags ; then
     if ${FLAGS["sgml"]} && ${FLAGS["tok"]} ; then
 	FLAGS["nbsp"]=true
@@ -293,9 +325,11 @@ if ! $doc ; then
     fi
 fi
 
-if ! $recaser_set && ${FLAGS["recase"]} ; then
-    echo "You want to recase, but recaser host isn't set."
-    usage
+if ! $recaser_set ; then
+    if ${FLAGS["recase"]} ; then
+	echo "You want to recase, but recaser host isn't set."
+	usage
+    fi
 fi
 
 check_recase_status
