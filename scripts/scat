@@ -4,12 +4,20 @@
 # appropriate.
 # Source: Joshua
 
+cat_cmd="cat"
+
 for file in $@; do
-    if [[ $file =~ \.gz$ ]]; then
-	zcat $file
-    elif [[ $file =~ \.bz2$ ]]; then
-       	bzcat $file
-    else
-	cat $file
-    fi
+    f_res=$(file -Li "$file" | perl -pe 's/^\S+: [^\/]+\/(x\-)?(\S+);.*$/$2/;');
+    case "$f_res" in 
+	bzip2)
+	    cat_cmd=bzcat
+	    ;;
+	gzip)
+	    cat_cmd=zcat
+	    ;;
+	*)
+	    cat_cmd=cat
+	    ;;
+    esac
+    $cat_cmd "$file"
 done
