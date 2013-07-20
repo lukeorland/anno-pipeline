@@ -23,7 +23,7 @@ use strict;
 foreach (@ARGV) {
 	open CURR, "<$_" or die "$!";
 	#print "<FILE name=\"$_\">\n";
-	print "<DOC id=\"$_\">\n";
+	print "<DOC id=\"$_\" type=\"document\">\n";
 	print "<TEXT>\n";
 	while (<CURR>) {
 		print;
